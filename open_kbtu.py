@@ -13,7 +13,7 @@ load_dotenv()
 
 USERNAME = os.getenv("KBTU_USERNAME")
 PASSWORD = os.getenv("KBTU_PASSWORD")
-REFRESH_INTERVAL = 45  # секунд
+REFRESH_INTERVAL = 35  # секунд
 
 def main():
     print("Starting...")
