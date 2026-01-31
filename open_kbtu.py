@@ -48,11 +48,13 @@ def do_login(driver, wait):
 
     username_field.clear()
     username_field.send_keys(USERNAME)
-    print(f"Entered username: {USERNAME}")
+    actual_username = username_field.get_attribute('value')
+    print(f"Entered username: {USERNAME} (actual in field: {actual_username})")
 
     password_field.clear()
     password_field.send_keys(PASSWORD)
-    print("Entered password")
+    actual_password = password_field.get_attribute('value')
+    print(f"Entered password (actual length: {len(actual_password) if actual_password else 0})")
 
     login_button = driver.find_element(By.XPATH, "//div[contains(@class, 'v-button') and contains(@class, 'primary')]")
     login_button.click()
