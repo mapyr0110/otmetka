@@ -66,10 +66,16 @@ def do_login(driver, wait):
 def is_session_expired(driver):
     """Проверяет, истекла ли сессия (появилась форма логина)"""
     try:
-        # Проверяем наличие поля ввода логина
-        driver.find_element(By.XPATH, "//input[@type='text' and contains(@class, 'v-textfield')]")
-        driver.find_element(By.XPATH, "//input[@type='password']")
-        return True
+        # Проверяем наличие кнопки "Кіру" (казахский) или формы логина
+        buttons = driver.find_elements(By.XPATH, "//span[@class='v-button-caption']")
+        for btn in buttons:
+            if btn.text in ['Кіру', 'Войти', 'Login']:
+                return True
+        # Также проверяем наличие полей логина
+        login_fields = driver.find_elements(By.XPATH, "//input[@type='password']")
+        if login_fields:
+            return True
+        return False
     except:
         return False
 
