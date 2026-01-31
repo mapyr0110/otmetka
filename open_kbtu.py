@@ -1,5 +1,6 @@
 import os
 import time
+import requests
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -13,7 +14,65 @@ load_dotenv()
 
 USERNAME = os.getenv("KBTU_USERNAME")
 PASSWORD = os.getenv("KBTU_PASSWORD")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 REFRESH_INTERVAL = 35  # секунд
+LOGIN_URL = "https://wsp.kbtu.kz/RegistrationOnline"
+
+
+def send_telegram_message(message):
+    """Sends a message via Telegram bot if token and chat_id are configured"""
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return False
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        data = {"chat_id": TELEGRAM_CHAT_ID, "text": message}
+        response = requests.post(url, data=data, timeout=10)
+        return response.status_code == 200
+    except Exception as e:
+        print(f"Failed to send Telegram message: {e}")
+        return False
+
+
+def do_login(driver, wait):
+    """Выполняет логин и возвращает True при успехе"""
+    print("Attempting login...")
+    driver.get(LOGIN_URL)
+    print("Page opened successfully!")
+
+    username_xpath = "/html/body/div[1]/div/div[2]/div/div[2]/div/div/div/div/div/div/div/div/div[2]/div/table/tbody/tr[1]/td[3]/div/input"
+    username_field = wait.until(EC.presence_of_element_located((By.XPATH, username_xpath)))
+
+    password_xpath = "/html/body/div[1]/div/div[2]/div/div[2]/div/div/div/div/div/div/div/div/div[2]/div/table/tbody/tr[2]/td[3]/input"
+    password_field = driver.find_element(By.XPATH, password_xpath)
+
+    username_field.clear()
+    username_field.send_keys(USERNAME)
+    print(f"Entered username: {USERNAME}")
+
+    password_field.clear()
+    password_field.send_keys(PASSWORD)
+    print("Entered password")
+
+    login_button = driver.find_element(By.XPATH, "//div[contains(@class, 'v-button') and contains(@class, 'primary')]")
+    login_button.click()
+    print("Clicked login button")
+
+    time.sleep(3)
+    print(f"Logged in! URL: {driver.current_url}")
+    return True
+
+
+def is_session_expired(driver):
+    """Проверяет, истекла ли сессия (появилась форма логина)"""
+    try:
+        # Проверяем наличие поля ввода логина
+        driver.find_element(By.XPATH, "//input[@type='text' and contains(@class, 'v-textfield')]")
+        driver.find_element(By.XPATH, "//input[@type='password']")
+        return True
+    except:
+        return False
+
 
 def main():
     print("Starting...")
@@ -28,30 +87,7 @@ def main():
     wait = WebDriverWait(driver, 15)
 
     try:
-        # Логин
-        driver.get("https://wsp.kbtu.kz/RegistrationOnline")
-        print("Page opened successfully!")
-
-        username_xpath = "/html/body/div[1]/div/div[2]/div/div[2]/div/div/div/div/div/div/div/div/div[2]/div/table/tbody/tr[1]/td[3]/div/input"
-        username_field = wait.until(EC.presence_of_element_located((By.XPATH, username_xpath)))
-
-        password_xpath = "/html/body/div[1]/div/div[2]/div/div[2]/div/div/div/div/div/div/div/div/div[2]/div/table/tbody/tr[2]/td[3]/input"
-        password_field = driver.find_element(By.XPATH, password_xpath)
-
-        username_field.clear()
-        username_field.send_keys(USERNAME)
-        print(f"Entered username: {USERNAME}")
-
-        password_field.clear()
-        password_field.send_keys(PASSWORD)
-        print("Entered password")
-
-        login_button = driver.find_element(By.XPATH, "//div[contains(@class, 'v-button') and contains(@class, 'primary')]")
-        login_button.click()
-        print("Clicked login button")
-
-        time.sleep(3)
-        print(f"Logged in! URL: {driver.current_url}")
+        do_login(driver, wait)
 
         # Цикл обновления
         refresh_count = 0
@@ -62,6 +98,12 @@ def main():
             driver.refresh()
             time.sleep(3)  # ждём загрузку страницы
 
+            # Проверяем, не истекла ли сессия
+            if is_session_expired(driver):
+                print(">>> Session expired! Re-logging in...")
+                do_login(driver, wait)
+                continue
+
             # Ищем кнопку "Отметиться"
             try:
                 otmetitsya_button = WebDriverWait(driver, 5).until(
@@ -70,9 +112,20 @@ def main():
                 print(">>> FOUND 'Отметиться' button! Clicking...")
                 otmetitsya_button.click()
                 print(">>> CLICKED! <<<")
+                if send_telegram_message("ATTENDANCE MARKED"):
+                    print(">>> Telegram notification sent!")
                 time.sleep(2)
             except:
                 print("Button 'Отметиться' not available")
+                # DEBUG: показываем все кнопки на странице
+                try:
+                    buttons = driver.find_elements(By.XPATH, "//div[contains(@class, 'v-button')]//span[@class='v-button-caption']")
+                    if buttons:
+                        btn_texts = [b.text for b in buttons if b.text.strip()]
+                        if btn_texts:
+                            print(f"  [DEBUG] Buttons on page: {btn_texts}")
+                except:
+                    pass
 
             print(f"Waiting {REFRESH_INTERVAL} seconds...")
             time.sleep(REFRESH_INTERVAL)
