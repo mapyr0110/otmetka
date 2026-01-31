@@ -101,14 +101,18 @@ def main():
             refresh_count += 1
             print(f"\n[{time.strftime('%H:%M:%S')}] Refresh #{refresh_count}")
 
-            driver.refresh()
+            # Вместо refresh() - переходим на URL заново (refresh может сбрасывать сессию)
+            driver.get(LOGIN_URL)
             time.sleep(3)  # ждём загрузку страницы
+
+            # DEBUG: показываем текущий URL
+            print(f"  [URL] {driver.current_url}")
 
             # Проверяем, не истекла ли сессия
             if is_session_expired(driver):
                 print(">>> Session expired! Re-logging in...")
                 do_login(driver, wait)
-                continue
+                time.sleep(5)  # подождать после перелогина
 
             # Ищем кнопку "Отметиться"
             try:
