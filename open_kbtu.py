@@ -105,10 +105,16 @@ def main():
             driver.get(LOGIN_URL)
             time.sleep(3)  # ждём загрузку страницы
 
-            # DEBUG: показываем текущий URL
+            # DEBUG: показываем текущий URL и все кнопки
             print(f"  [URL] {driver.current_url}")
+            try:
+                all_buttons = driver.find_elements(By.XPATH, "//span[@class='v-button-caption']")
+                btn_texts = [b.text for b in all_buttons if b.text.strip()]
+                print(f"  [ALL BUTTONS] {btn_texts}")
+            except:
+                pass
 
-            # Проверяем, не истекла ли сессия
+            # Проверяем, не истекла ли сессия (кнопка Кіру видна = нужен логин)
             if is_session_expired(driver):
                 print(">>> Session expired! Re-logging in...")
                 do_login(driver, wait)
