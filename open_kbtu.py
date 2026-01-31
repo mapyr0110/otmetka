@@ -57,10 +57,15 @@ def do_login(driver, wait):
     print(f"Entered password (actual length: {len(actual_password) if actual_password else 0})")
 
     login_button = driver.find_element(By.XPATH, "//div[contains(@class, 'v-button') and contains(@class, 'primary')]")
+    print(f"Login button text: {login_button.text}")
     login_button.click()
     print("Clicked login button")
 
     time.sleep(5)  # ждём дольше
+
+    # Сохраняем скриншот
+    driver.save_screenshot("/tmp/login_result.png")
+    print("Screenshot saved to /tmp/login_result.png")
     print(f"After login URL: {driver.current_url}")
 
     # DEBUG: ищем ошибки на странице
